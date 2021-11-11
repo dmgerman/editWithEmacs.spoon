@@ -6,6 +6,8 @@
 
 This module allows editing with emacs anywhere in OS X.
 
+See this demo: [[https://youtu.be/jYUKYpXL6rI]]
+
 In any text field in any application, one can summon Emacs. 
 
 1. User is editing textfield, presses:

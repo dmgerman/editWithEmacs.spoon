@@ -62,8 +62,6 @@ function edit_in_emacs(everything)
       hs.alert("🤔 already in emacs. Ignoring request")
       return
    end
-      
-   
    obj.emacs = hs.application.find(obj.emacsAppName)
    
    if not obj.emacs then
@@ -95,7 +93,7 @@ function emacs_sends_back(everything)
    -- this is usually run by emacs using hs
    -- hs -c "emacs_sends_back()"
 
-   print("emacs is sendinb back the text")
+   print("emacs is sending back the text")
 
    if not obj.current_win then
       hs.alert("No current window active")
@@ -128,15 +126,15 @@ appWatcher:start()
 
 -- edit by selecting everything
 hs.hotkey.bind({"alt"}, '2', nil, function()
-      edit_in_emacs(True)
+      edit_in_emacs(true)
 end)
 
 -- edit by using current selection
 hs.hotkey.bind({"alt"}, '3', nil, function()
-      edit_in_emacs(False, False)
+      edit_in_emacs(false)
 end)
 
-print("Finished loading editWithEmacs")
+print("Finished loading editWithEmacs spoon" )
 
 
 
