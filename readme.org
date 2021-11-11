@@ -38,7 +38,7 @@ hs.loadSpoon("editWithEmacs")
 
 ** emacs
 
-COpy the file [[./hammerspoon.el]] to your .emacs.d directory and make sure it loaded
+Copy the file [[./hammerspoon.el]] to your .emacs.d directory and make sure it is loaded
 
 * Testing installation
 
@@ -56,12 +56,12 @@ You can change the default keys if you choose.
 
 #+begin_src lua
 hs.hotkey.bind({"alt"}, '2', nil, function()
-      edit_in_emacs(True)
+      edit_in_emacs(true)
 end)
 
 -- edit by using current selection
 hs.hotkey.bind({"alt"}, '3', nil, function()
-      edit_in_emacs(False, False)
+      edit_in_emacs(false)
 end)
 #+end_src
 
