@@ -1,13 +1,13 @@
 ;; Emacs code required to communicate with Lisp
 
-(defvar hammerspoon-buffer "_hs_edit")
+(defvar hammerspoon-buffer "*hammerspoon_edit*")
 
 
 (defun hammerspoon-do (command)
   (interactive "sHammerspoon Command:")
   "execute given command in hammerspoon"
   (setq hs-binary (executable-find "hs"))
-  (if hs-binary 
+  (if hs-binary
       (call-process hs-binary
        nil 0 nil
        "-c"
@@ -29,7 +29,7 @@
   "Util function to use to send edited text back to hammerspoon."
   (interactive)
    ;; kill the buffer to clipboard
-   ;; since we do not kill the buffer, we can always 
+   ;; since we do not kill the buffer, we can always
    ;; undo to recover the text
    (mark-whole-buffer)
    (call-interactively 'kill-ring-save)
@@ -50,11 +50,11 @@
 
 (define-minor-mode hammerspoon-edit-minor-mode
   "my minor mode to help edit with hammerspoon"
-  
+
   :global nil
   :lighter   "_hs-edit_"    ; lighter
   :keymap hammerspoon-edit-minor-map             ; keymap
-  
+
   ;; if disabling `undo-tree-mode', rebuild `buffer-undo-list' from tree so
   ;; Emacs undo can work
   )
