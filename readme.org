@@ -19,7 +19,9 @@ In any text field in any application, one can summon Emacs to edit text:
 
 ** Hammerspoon
 
-Place this folder inside the =~/.hammerspoon/Spoons= directory such that you have the following:
+Install Hammerspoon, either from [their instructions](https://hammerspoon.org/#how-do-i-install-it) or via Homebrew (e.g., `brew install hammerspoon`).
+
+Place this repository’s folder inside the =~/.hammerspoon/Spoons= directory such that you have the following:
 
 #+begin_src sh
  ~/.hammerspoon/Spoons/editWithEmacs.spoon
