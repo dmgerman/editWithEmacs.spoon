@@ -4,74 +4,68 @@
 
 * Introduction
 
-This module allows editing with emacs anywhere in OS X.
+This module allows editing with Emacs anywhere in OS X.
 
 See this demo: [[https://youtu.be/jYUKYpXL6rI]]
 
-In any text field in any application, one can summon Emacs. 
+In any text field in any application, one can summon Emacs to edit text:
 
-1. User is editing textfield, presses:
-  - /Option-2/: send all text in field
-  - /Option-3/: send the current selection
-2. Emacs shows the currently edited text in a new buffer (it can be the entire text field or the current selection)
-3. User edits buffer (in org-mode)
-4. User presses /C-C C-C/ to send back text to the original text field replacing selection
-
+1. User is in a non-Emacs application, and presses the bound keys (see below).
+2. Emacs opens a buffer for editing.
+3. User edits buffer via Emacs.
+4. User presses =C-c C-c=, sending the Emacs buffer back to the originating application window.
 
 * Installation
 
 ** Hammerspoon
 
-place this folder inside the ~/.hammerspoon/Spoons directory such that you have (the .spoon extension is important):
+Place this folder inside the =~/.hammerspoon/Spoons= directory such that you have the following:
 
 #+begin_src sh
  ~/.hammerspoon/Spoons/editWithEmacs.spoon
 #+end_src
 
+Note, the =.spoon= extension is important.
 
-
-Modify your ~/.hammerspoon/init.lua and add:
+Modify your =~/.hammerspoon/init.lua= and add:
 
 #+begin_src lua
-hs.loadSpoon("editWithEmacs")
+  local meh = {"ctrl", "alt", "cmd"}
+  local hyper = {"ctrl", "alt", "cmd", "shift"}
+
+  -- Load the editWithEmacs functions
+  hs.loadSpoon("editWithEmacs")
+
+  -- Optional configuration of beginEditShellCommand
+  spoon.editWithEmacs.beginEditShellCommand = "EDITOR -e '(hammerspoon-edit-begin)'"
+
+  spoon.editWithEmacs:bindHotkeys({
+      selection = {hyper, "e"},
+      all = {meh, "e"}
+  })
 #+end_src
 
-** emacs
+** Emacs
 
-Copy the file [[./hammerspoon.el]] to your .emacs.d directory and make sure it is loaded
+Load the =hammerspoon.el= file in Emacs.
+
+#+begin_src emacs-lisp :lexical no
+  (load "~/.hammerspoon/Spoons/editWithEmacs.spoon/hammerspoon.el")
+#+end_src
 
 * Testing installation
 
-Make sure you can summon hammerspoon from emacs. Call the interactive function /hammerpoon-test/
+To test if you Hammerspoon works from Emacs, call =hammerspoon-test= (e.g., =M-x hammerspoon-test=).
 
-You should see a message in the screen. If not, something is wrong
+* How to use
 
+With the above keybindings, when you press =Cmd= + =Alt= + =Ctrl= + =e=, Hammerspoon will copy the content of the current application’s focus, open an Emacs buffer, and paste those contents into the buffer.  You then edit the that Emacs buffer and press =C-c C-c= to send that back to the originating window.
 
-* How to use 
-
-See the bottom of [[./init.lua]]. There are two commands:
-
-The first is edit in emacs selecting all text in the field. The second uses the current selection.
-You can change the default keys if you choose.
-
-#+begin_src lua
-hs.hotkey.bind({"alt"}, '2', nil, function()
-      edit_in_emacs(true)
-end)
-
--- edit by using current selection
-hs.hotkey.bind({"alt"}, '3', nil, function()
-      edit_in_emacs(false)
-end)
-#+end_src
-
-
-In the text field you are editing, call either command. If emacs is running, its most current window will be shown, and a new buffer displayed
-with the text to edit. Simply press Ctrl-C Ctrl-C to finish editing. After this you should be back in the field you were editing
+If you press =Shift= + =Cmd= + =Alt= + =Ctrl= + =e=, Hammerspoon cuts the current selected text, and pastes that into the buffer.  When you finish editing, Hammerspoon will paste the content of the buffer; which will replace the selected text.
 
 * Limitations
 
-- This method is non-reentrant. This means you can only edit one field at a time. You do not need to send the text back to the text-field. 
+- This method is non-reentrant. This means you can only edit one field at a time. You do not need to send the text back to the text-field.
   You can use edit-with-emacs again without any undesirable effect.
 - It is currently sending commands directly to emacs via the keyboard. Thus, emacs should be ready to accept commands
 - If something goes wrong and the text does not appear, you can retrieve it from emacs. Switch to the _hs_edit buffer and you will see the text you were editing.

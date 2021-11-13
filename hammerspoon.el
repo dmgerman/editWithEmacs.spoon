@@ -1,73 +1,70 @@
-;; Emacs code required to communicate with Lisp
+(defvar hammerspoon-buffer-mode 'markdown-mode
+  "Name of major mode for hammerspoon editing")
 
-(defvar hammerspoon-buffer "_hs_edit")
-
-
-(defun hammerspoon-do (command)
-  (interactive "sHammerspoon Command:")
-  "execute given command in hammerspoon"
-  (setq hs-binary (executable-find "hs"))
-  (if hs-binary 
-      (call-process hs-binary
-       nil 0 nil
-       "-c"
-       command)
-    (message "hammerspoon hs executable not found. Make sure you hammerspoon has loaded the ipc module")
-    ))
-
-
-(defun hammerspoon-alert (message)
-  "shows hammerspoon alert popup with a message"
-  (hammerspoon-do (concat "hs.alert.show('" message "', 1)")))
-
-;; use this to test that hammerspoon responds to emacs
-(defun hammerspoon-test ()
-    (interactive)
-  (hammerspoon-alert "This is the end of the world..."))
-
-(defun hammerspoon-edit-end ()
-  "Util function to use to send edited text back to hammerspoon."
-  (interactive)
-   ;; kill the buffer to clipboard
-   ;; since we do not kill the buffer, we can always 
-   ;; undo to recover the text
-   (mark-whole-buffer)
-   (call-interactively 'kill-ring-save)
-   (hammerspoon-do (concat "emacs_sends_back(False)"))
-   (previous-buffer)
-  )
+(defvar hammerspoon-buffer-name "*hammerspoon_edit*"
+  "Name of the buffer used to edit in emacs.")
 
 (defvar hammerspoon-edit-minor-map nil
   "Keymap used in hammer-edit-minor-mode.")
 
 (unless hammerspoon-edit-minor-map
-(let ((map (make-sparse-keymap)))
+  (let ((map (make-sparse-keymap)))
 
-(define-key map (kbd "C-c C-c")   'hammerspoon-edit-end)
-(define-key map (kbd "C-c h")     'hammerspoon-test) ;; for testing
+    (define-key map (kbd "C-c C-c")   'hammerspoon-edit-end)
+    (define-key map (kbd "C-c h")     'hammerspoon-test) ;; for testing
 
-(setq hammerspoon-edit-minor-map map)))
+    (setq hammerspoon-edit-minor-map map)))
 
 (define-minor-mode hammerspoon-edit-minor-mode
-  "my minor mode to help edit with hammerspoon"
-  
+  "Minor mode to help with editing with hammerspoon"
+
   :global nil
-  :lighter   "_hs-edit_"    ; lighter
-  :keymap hammerspoon-edit-minor-map             ; keymap
-  
+  :lighter   "_hs-edit_"
+  :keymap hammerspoon-edit-minor-map
+
   ;; if disabling `undo-tree-mode', rebuild `buffer-undo-list' from tree so
   ;; Emacs undo can work
   )
 
-(defun hammerspoon-edit-begin ()
-  "Util function for use with hammerspoon to edit text. This function is expected to be used by hammerspoon."
+
+(defun hammerspoon-do (command)
+  "Send Hammerspoon the given COMMAND."
+  (interactive "sHammerspoon Command:")
+  (setq hs-binary (executable-find "hs"))
+  (if hs-binary
+      (call-process hs-binary
+                    nil 0 nil
+                    "-c"
+                    command)
+    (message "Hammerspoon hs executable not found. Make sure you hammerspoon has loaded the ipc module")))
+
+(defun hammerspoon-alert (message)
+  "Show given MESSAGE via Hammerspoon's alert system."
+  (hammerspoon-do (concat "hs.alert.show('" message "', 1)")))
+
+(defun hammerspoon-test ()
+  "Show a test message via Hammerspoon's alert system.
+
+If you see a message, Hammerspoon is working correctly."
   (interactive)
-  (let ((hs-edit-buffer (get-buffer-create hammerspoon-buffer))
-        )
+  (hammerspoon-alert "Hammerspoon test message..."))
+
+(defun hammerspoon-edit-end ()
+  "Send, via Hammerspoon, contents of buffer back to originating window."
+  (interactive)
+  (mark-whole-buffer)
+  (call-interactively 'kill-ring-save)
+  (hammerspoon-do (concat "spoon.editWithEmacs:endEditing(False)"))
+  (previous-buffer))
+
+(defun hammerspoon-edit-begin ()
+  "Receive, from Hammerspoon, text to edit in Emacs"
+  (interactive)
+  (let ((hs-edit-buffer (get-buffer-create hammerspoon-buffer-name)))
     (switch-to-buffer hs-edit-buffer)
-    (erase-buffer)
+    (erase-buffer) ; Ensure we have a clean buffer
     (yank)
-    (org-mode)
+    (funcall hammerspoon-buffer-mode)
     (hammerspoon-edit-minor-mode)
-    (exchange-point-and-mark)
-    ))
+    (message "Type C-c C-c to send back to originating window")
+    (exchange-point-and-mark)))
