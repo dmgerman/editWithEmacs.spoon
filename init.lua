@@ -21,7 +21,6 @@ obj.license = "MIT - https://opensource.org/licenses/MIT"
 obj.emacs = nil         -- the application itselt
 obj.current_win = nil   -- the current emacs window
 obj.emacsAppName = "Emacs"
-obj.emacsClientAppName = "EmacsClient"
 
 require ("hs.ipc")
 
@@ -41,7 +40,6 @@ function do_emacs()
    -- this can probably be done more reliably with emacsclient
    if obj.emacs then
       -- Prior comments indicate that the emacsclient approach does not reliably work.
-
       hs.execute("editor -e '(hammerspoon-edit-begin)'", true)
       obj.emacs:activate()
 
@@ -117,32 +115,6 @@ function emacs_sends_back(everything)
 
 end
 
--- make sure that emacs is brought to the front when EmacsClient is executed
-
--- function emacsclientWatcher(appName, eventType, appObject)
---    if (eventType == hs.application.watcher.activated) then
---       if (appName == obj.emacsClientAppName) then
---          -- Bring Emacs to Front
---          hs.osascript.applescript('tell application "Emacs" to activate')
---       end
---    end
--- end
--- appWatcher = hs.application.watcher.new(emacsclientWatcher)
--- appWatcher:start()
-
-
--- edit by selecting everything
-hs.hotkey.bind({"cmd", "alt", "ctrl"}, 'e', nil, function()
-      edit_in_emacs(true)
-end)
-
--- edit by using current selection
-hs.hotkey.bind({"cmd", "alt", "ctrl", "shift"}, 'e', nil, function()
-      edit_in_emacs(false)
-end)
-
 print("Finished loading editWithEmacs spoon" )
-
-
 
 return obj
