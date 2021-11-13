@@ -3,14 +3,6 @@
 ---
 print("Starting loading editWithEmacs spoon")
 
--- A global configuration
-editWithEmacs={}
-editWithEmacs.__index = editWithEmacs
-
--- The command to invoke
-editWithEmacs.editBeginCommand = "emacsclient -e '(hammerspoon-edit-begin)' --create-frame"
-editWithEmacs.emacsAppName = "Emacs"
-
 local obj={}
 
 obj.__index = obj
@@ -30,6 +22,12 @@ obj.currentEmacs = nil
 -- the current non-Emacs window from which we will begin editing
 obj.currentWindow = nil
 
+-- The command to invoke
+obj.beginEditShellCommand = "emacsclient -e '(hammerspoon-edit-begin)' --create-frame"
+
+-- The name of the Emacs application
+obj.emacsAppName = "Emacs"
+
 require ("hs.ipc")
 
 if not hs.ipc.cliStatus() then
@@ -43,13 +41,14 @@ if not hs.ipc.cliStatus() then
    end
 end
 
-function do_emacs()
+-- Open the editor and give it focus.
+function obj:openEditor()
    -- this is a callback to wait until other keys are consumed
    -- this can probably be done more reliably with emacsclient
-   if obj.currentEmacs then
+   if self.currentEmacs then
       -- Prior comments indicate that the emacsclient approach does not reliably work.
-      hs.execute(editWithEmacs.editBeginCommand, true)
-      obj.currentEmacs:activate()
+      hs.execute(self.beginEditShellCommand, true)
+      self.currentEmacs:activate()
 
       -- Commented out in case the emacsclient stops reliably working.
       -- What is happening below is that with the above obj.currentEmacs:activate() we
@@ -65,22 +64,23 @@ function do_emacs()
    end
 end
 
-function edit_in_emacs(everything)
+-- Begin the edit with Emacs experience
+function obj:begin(everything)
    -- everything: if true, do the equivalent of Ctrl-A
    ---            select everything
    w = hs.window.focusedWindow()
-   if w:title():sub(1, 5) == editWithEmacs.emacsAppName then
+   if w:title():sub(1, 5) == self.emacsAppName then
       hs.alert("🤔 already in emacs. Ignoring request")
       return
    end
-   obj.currentEmacs = hs.application.find(editWithEmacs.emacsAppName)
+   self.currentEmacs = hs.application.find(self.emacsAppName)
 
-   if not obj.currentEmacs then
+   if not self.currentEmacs then
       hs.alert("No Emacs window found. Ignoring request")
       return
    end
 
-   obj.currentWindow = w
+   self.currentWindow = w
 
    -- use the selection as the text to send to emacs
    -- we use the clipboard to communicate both ways with emacs...
@@ -97,10 +97,21 @@ function edit_in_emacs(everything)
 
    hs.notify.new({title=w:application():title(), informativeText="«" .. w:title() .. "»", subTitle="Editing in Emacs"}):send()
 
-   hs.timer.doAfter(0.1, do_emacs)
+   hs.timer.doAfter(0.1, obj:openEditor())
 end
 
-function emacs_sends_back(everything)
+function obj:bindHotkeys(mapping)
+   hs.inspect(mapping)
+   print("Bind Hotkeys for editWithEmacs")
+   hs.hotkey.bind(mapping.selection[1], mapping.selection[2], function ()
+      self:begin(false)
+   end)
+   hs.hotkey.bind(mapping.all[1], mapping.all[2], function ()
+      self:begin(true)
+   end)
+end
+
+function obj:emacs_sends_back(everything)
    -- the text is in the clipboard
    -- enable the original window and see what happens
    -- this is usually run by emacs using hs
@@ -108,10 +119,10 @@ function emacs_sends_back(everything)
 
    print("emacs is sending back the text")
 
-   if not obj.currentWindow then
+   if not self.currentWindow then
       hs.alert("No current window active")
    else
-      if (obj.currentWindow:focus()) then
+      if (self.currentWindow:focus()) then
          if everything then
             hs.eventtap.keyStroke({"cmd"}, "a")
          end
