@@ -54,7 +54,7 @@ If you see a message, Hammerspoon is working correctly."
   (interactive)
   (mark-whole-buffer)
   (call-interactively 'kill-ring-save)
-  (hammerspoon-do (concat "spoon.editWithEmacs:emacs_sends_back(False)"))
+  (hammerspoon-do (concat "spoon.editWithEmacs:endEditing(False)"))
   (previous-buffer))
 
 (defun hammerspoon-edit-begin ()

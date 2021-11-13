@@ -65,7 +65,7 @@ function obj:openEditor()
 end
 
 -- Begin the edit with Emacs experience
-function obj:begin(everything)
+function obj:beginEditing(everything)
    -- everything: if true, do the equivalent of Ctrl-A
    ---            select everything
    w = hs.window.focusedWindow()
@@ -104,14 +104,14 @@ function obj:bindHotkeys(mapping)
    hs.inspect(mapping)
    print("Bind Hotkeys for editWithEmacs")
    hs.hotkey.bind(mapping.selection[1], mapping.selection[2], function ()
-      self:begin(false)
+      self:beginEditing(false)
    end)
    hs.hotkey.bind(mapping.all[1], mapping.all[2], function ()
-      self:begin(true)
+      self:beginEditing(true)
    end)
 end
 
-function obj:emacs_sends_back(everything)
+function obj:endEditing(everything)
    -- the text is in the clipboard
    -- enable the original window and see what happens
    -- this is usually run by emacs using hs
