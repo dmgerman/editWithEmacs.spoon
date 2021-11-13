@@ -1,35 +1,34 @@
-
 ---
 --- dmg hammerspoon
 ---
-print("Starting loading0 ")
+print("Starting loading editWithEmacs spoon")
 
+-- A global configuration
+editWithEmacs={}
+editWithEmacs.__index = editWithEmacs
+
+-- The command to invoke
+editWithEmacs.editBeginCommand = "emacsclient -e '(hammerspoon-edit-begin)' --create-frame"
+editWithEmacs.emacsAppName = "Emacs"
 
 local obj={}
 
 obj.__index = obj
 
--- metadata
-
+-- metadata for all spoons
 obj.name = "dmg"
 obj.version = "0.1"
 obj.author = "dmg <dmg@uvic.ca>"
 obj.homepage = "https://github.com/dmgerman/hs-edit-with-emacs"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
 
--- We'll let the upstream user configure the specific command in their
--- init.lua file.
-if editWithEmacsCommand then
-   obj.editWithEmacsCommand = editWithEmacsCommand
-else
-   obj.editWithEmacsCommand = "emacsclient -e '(hammerspoon-edit-begin)' --create-frame"
-end
+-- Additional local variables for managing the state of editing.
 
+-- the current instance of Emacs
+obj.currentEmacs = nil
 
-
-obj.emacs = nil         -- the application itselt
-obj.current_win = nil   -- the current emacs window
-obj.emacsAppName = "Emacs"
+-- the current non-Emacs window from which we will begin editing
+obj.currentWindow = nil
 
 require ("hs.ipc")
 
@@ -47,13 +46,13 @@ end
 function do_emacs()
    -- this is a callback to wait until other keys are consumed
    -- this can probably be done more reliably with emacsclient
-   if obj.emacs then
+   if obj.currentEmacs then
       -- Prior comments indicate that the emacsclient approach does not reliably work.
-      hs.execute(obj.editWithEmacsCommand, true)
-      obj.emacs:activate()
+      hs.execute(editWithEmacs.editBeginCommand, true)
+      obj.currentEmacs:activate()
 
       -- Commented out in case the emacsclient stops reliably working.
-      -- What is happening below is that with the above obj.emacs:activate() we
+      -- What is happening below is that with the above obj.currentEmacs:activate() we
       -- are in the emacs editor.  We then want to open the M-x minibuffer, type
       -- hammerspoon-edit-begin and then hit return
 
@@ -70,18 +69,18 @@ function edit_in_emacs(everything)
    -- everything: if true, do the equivalent of Ctrl-A
    ---            select everything
    w = hs.window.focusedWindow()
-   if w:title():sub(1, 5) == obj.emacsAppName then
+   if w:title():sub(1, 5) == editWithEmacs.emacsAppName then
       hs.alert("🤔 already in emacs. Ignoring request")
       return
    end
-   obj.emacs = hs.application.find(obj.emacsAppName)
+   obj.currentEmacs = hs.application.find(editWithEmacs.emacsAppName)
 
-   if not obj.emacs then
+   if not obj.currentEmacs then
       hs.alert("No Emacs window found. Ignoring request")
       return
    end
 
-   obj.current_win = w
+   obj.currentWindow = w
 
    -- use the selection as the text to send to emacs
    -- we use the clipboard to communicate both ways with emacs...
@@ -109,10 +108,10 @@ function emacs_sends_back(everything)
 
    print("emacs is sending back the text")
 
-   if not obj.current_win then
+   if not obj.currentWindow then
       hs.alert("No current window active")
    else
-      if (obj.current_win:focus()) then
+      if (obj.currentWindow:focus()) then
          if everything then
             hs.eventtap.keyStroke({"cmd"}, "a")
          end
