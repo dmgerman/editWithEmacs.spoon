@@ -17,6 +17,15 @@ obj.author = "dmg <dmg@uvic.ca>"
 obj.homepage = "https://github.com/dmgerman/hs-edit-with-emacs"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
 
+-- We'll let the upstream user configure the specific command in their
+-- init.lua file.
+if editWithEmacsCommand then
+   obj.editWithEmacsCommand = editWithEmacsCommand
+else
+   obj.editWithEmacsCommand = "emacsclient -e '(hammerspoon-edit-begin)' --create-frame"
+end
+
+
 
 obj.emacs = nil         -- the application itselt
 obj.current_win = nil   -- the current emacs window
@@ -40,7 +49,7 @@ function do_emacs()
    -- this can probably be done more reliably with emacsclient
    if obj.emacs then
       -- Prior comments indicate that the emacsclient approach does not reliably work.
-      hs.execute("EDITOR -e '(hammerspoon-edit-begin)'", true)
+      hs.execute(obj.editWithEmacsCommand, true)
       obj.emacs:activate()
 
       -- Commented out in case the emacsclient stops reliably working.
