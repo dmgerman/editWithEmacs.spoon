@@ -41,6 +41,7 @@ function do_emacs()
    -- this can probably be done more reliably with emacsclient
    if obj.emacs then
       -- Prior comments indicate that the emacsclient approach does not reliably work.
+
       hs.execute("editor -e '(hammerspoon-edit-begin)'", true)
       obj.emacs:activate()
 
@@ -88,7 +89,9 @@ function edit_in_emacs(everything)
       hs.eventtap.keyStroke({"cmd"}, "x")
    end
 
-   hs.timer.doAfter(0.5,do_emacs)
+   hs.notify.new({title=w:application():title(), informativeText="«" .. w:title() .. "»", subTitle="Editing in Emacs"}):send()
+
+   hs.timer.doAfter(0.1, do_emacs)
 end
 
 function emacs_sends_back(everything)
@@ -130,13 +133,11 @@ end
 
 -- edit by selecting everything
 hs.hotkey.bind({"cmd", "alt", "ctrl"}, 'e', nil, function()
-      hs.notify.new({title="Hammerspoon", informativeText="Heading to Emacs"}):send()
       edit_in_emacs(true)
 end)
 
 -- edit by using current selection
 hs.hotkey.bind({"cmd", "alt", "ctrl", "shift"}, 'e', nil, function()
-      hs.notify.new({title="Hammerspoon", informativeText="Heading to Emacs"}):send()
       edit_in_emacs(false)
 end)
 
