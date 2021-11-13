@@ -40,14 +40,18 @@ function do_emacs()
    -- this is a callback to wait until other keys are consumed
    -- this can probably be done more reliably with emacsclient
    if obj.emacs then
+      -- Prior comments indicate that the emacsclient approach does not reliably work.
+      hs.execute("emacsclient -e '(hammerspoon-edit-begin)'", true)
       obj.emacs:activate()
-      -- We want to call `M-x' (e.g., `execute-extended-command')
-      hs.eventtap.keyStroke({"alt"}, "x")
-      -- command to execute in emacs
-      hs.eventtap.keyStrokes("hammerspoon-edit-begin")
-      hs.eventtap.keyStrokes("\n")
--- this does not seem to work reliable
---      hs.execute("emacsclient -e '(hammerspoon-edit-begin)", true)
+
+      -- Commented out in case the emacsclient stops reliably working.
+      -- What is happening below is that with the above obj.emacs:activate() we
+      -- are in the emacs editor.  We then want to open the M-x minibuffer, type
+      -- hammerspoon-edit-begin and then hit return
+
+      -- hs.eventtap.keyStroke({"alt"}, "x")
+      -- hs.eventtap.keyStrokes("hammerspoon-edit-begin")
+      -- hs.eventtap.keyStrokes("\n")
    else
       -- this should not be executed
       hs.alert("No emacs window found")
