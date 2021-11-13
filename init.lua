@@ -40,7 +40,7 @@ function do_emacs()
    -- this can probably be done more reliably with emacsclient
    if obj.emacs then
       -- Prior comments indicate that the emacsclient approach does not reliably work.
-      hs.execute("editor -e '(hammerspoon-edit-begin)'", true)
+      hs.execute("EDITOR -e '(hammerspoon-edit-begin)'", true)
       obj.emacs:activate()
 
       -- Commented out in case the emacsclient stops reliably working.
