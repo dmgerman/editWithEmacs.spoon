@@ -41,7 +41,7 @@ function do_emacs()
    -- this can probably be done more reliably with emacsclient
    if obj.emacs then
       -- Prior comments indicate that the emacsclient approach does not reliably work.
-      hs.execute("emacsclient -e '(hammerspoon-edit-begin)'", true)
+      hs.execute("editor -e '(hammerspoon-edit-begin)'", true)
       obj.emacs:activate()
 
       -- Commented out in case the emacsclient stops reliably working.
@@ -116,25 +116,27 @@ end
 
 -- make sure that emacs is brought to the front when EmacsClient is executed
 
-function emacsclientWatcher(appName, eventType, appObject)
-   if (eventType == hs.application.watcher.activated) then
-      if (appName == obj.emacsClientAppName) then
-         -- Bring Emacs to Front
-         hs.osascript.applescript('tell application "Emacs" to activate')
-      end
-   end
-end
-appWatcher = hs.application.watcher.new(emacsclientWatcher)
-appWatcher:start()
+-- function emacsclientWatcher(appName, eventType, appObject)
+--    if (eventType == hs.application.watcher.activated) then
+--       if (appName == obj.emacsClientAppName) then
+--          -- Bring Emacs to Front
+--          hs.osascript.applescript('tell application "Emacs" to activate')
+--       end
+--    end
+-- end
+-- appWatcher = hs.application.watcher.new(emacsclientWatcher)
+-- appWatcher:start()
 
 
 -- edit by selecting everything
-hs.hotkey.bind({"alt"}, '2', nil, function()
+hs.hotkey.bind({"cmd", "alt", "ctrl"}, 'e', nil, function()
+      hs.notify.new({title="Hammerspoon", informativeText="Heading to Emacs"}):send()
       edit_in_emacs(true)
 end)
 
 -- edit by using current selection
-hs.hotkey.bind({"alt"}, '3', nil, function()
+hs.hotkey.bind({"cmd", "alt", "ctrl", "shift"}, 'e', nil, function()
+      hs.notify.new({title="Hammerspoon", informativeText="Heading to Emacs"}):send()
       edit_in_emacs(false)
 end)
 
