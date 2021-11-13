@@ -30,20 +30,19 @@ Note, the =.spoon= extension is important.
 Modify your =~/.hammerspoon/init.lua= and add:
 
 #+begin_src lua
+  local meh = {"ctrl", "alt", "cmd"}
+  local hyper = {"ctrl", "alt", "cmd", "shift"}
+
   -- Load the editWithEmacs functions
   hs.loadSpoon("editWithEmacs")
 
-  -- Create the keybindings for editing:
-  --
-  -- Edit by selecting everything in the current focus.
-  hs.hotkey.bind({"cmd", "alt", "ctrl"}, 'e', nil, function()
-     edit_in_emacs(true)
-  end)
+  -- Optional configuration of beginEditShellCommand
+  spoon.editWithEmacs.beginEditShellCommand = "EDITOR -e '(hammerspoon-edit-begin)'"
 
-  -- Edit by using only the selected text of the current focus.
-  hs.hotkey.bind({"cmd", "alt", "ctrl", "shift"}, 'e', nil, function()
-     edit_in_emacs(false)
-  end)
+  spoon.editWithEmacs:bindHotkeys({
+      selection = {hyper, "e"},
+      all = {meh, "e"}
+  })
 #+end_src
 
 ** Emacs
