@@ -8,11 +8,14 @@ local obj={}
 obj.__index = obj
 
 -- metadata for all spoons
-obj.name = "dmg"
-obj.version = "0.1"
-obj.author = "dmg <dmg@uvic.ca>"
-obj.homepage = "https://github.com/dmgerman/hs-edit-with-emacs"
+obj.name = "editWithEmacs"
+obj.version = "0.2"
+obj.author = "Jeremy Friesen <emacs@jeremyfriesen.com>"
+obj.homepage = "https://github.com/jeremyf/editWithEmacs"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
+
+-- Paying homage to the prior work
+obj.derivedFrom = "http://github.com/dmgerman/editWithEmacs"
 
 -- Additional local variables for managing the state of editing.
 
