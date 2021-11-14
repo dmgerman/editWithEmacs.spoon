@@ -2,8 +2,6 @@
 ---
 --- dmg hammerspoon
 ---
-print("Starting loading0 ")
-
 
 local obj={}
 
@@ -11,7 +9,7 @@ obj.__index = obj
 
 -- metadata
 
-obj.name = "dmg"
+obj.name = "editWithEmacs"
 obj.version = "0.1"
 obj.author = "dmg <dmg@uvic.ca>"
 obj.homepage = "https://github.com/dmgerman/hs-edit-with-emacs"
