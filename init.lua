@@ -39,10 +39,10 @@ function do_emacs()
    -- this can probably be done more reliably with emacsclient
    if obj.emacs then
       obj.emacs:activate()
-      -- we are going to type the command directly into the emacs window
-      hs.eventtap.keyStroke({"cmd", "shift"}, ";")
+      -- We want to call `M-x' (e.g., `execute-extended-command')
+      hs.eventtap.keyStroke({"alt"}, "x")
       -- command to execute in emacs
-      hs.eventtap.keyStrokes("(hammerspoon-edit-begin)")
+      hs.eventtap.keyStrokes("hammerspoon-edit-begin")
       hs.eventtap.keyStrokes("\n")
 -- this does not seem to work reliable
 --      hs.execute("emacsclient -e '(hammerspoon-edit-begin)", true)
@@ -61,12 +61,12 @@ function edit_in_emacs(everything)
       return
    end
    obj.emacs = hs.application.find(obj.emacsAppName)
-   
+
    if not obj.emacs then
       hs.alert("No Emacs window found. Ignoring request")
       return
    end
-   
+
    obj.current_win = w
 
    -- use the selection as the text to send to emacs
@@ -78,10 +78,10 @@ function edit_in_emacs(everything)
       -- copy selection into the clipboard
       hs.eventtap.keyStroke({"cmd"}, "c")
    else
-      -- otherwise we have to cut, 
+      -- otherwise we have to cut,
       hs.eventtap.keyStroke({"cmd"}, "x")
    end
-   
+
    hs.timer.doAfter(0.5,do_emacs)
 end
 
@@ -137,4 +137,3 @@ print("Finished loading editWithEmacs spoon" )
 
 
 return obj
-
