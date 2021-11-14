@@ -46,10 +46,9 @@ end
 
 -- Open the editor and give it focus.
 function obj:openEditor()
-   -- this is a callback to wait until other keys are consumed
-   -- this can probably be done more reliably with emacsclient
    if self.currentEmacs then
       -- Prior comments indicate that the emacsclient approach does not reliably work.
+      -- With my EDITOR configuration, I've noticed that this does work reliably.
       hs.execute(self.openEditorShellCommand, true)
       self.currentEmacs:activate()
 
