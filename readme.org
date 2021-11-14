@@ -39,7 +39,7 @@ Modify your =~/.hammerspoon/init.lua= and add:
   hs.loadSpoon("editWithEmacs")
 
   -- Optional configuration of beginEditShellCommand
-  spoon.editWithEmacs.beginEditShellCommand = "EDITOR -e '(hammerspoon-edit-begin)'"
+  spoon.editWithEmacs.openEditorShellCommand = "EDITOR -e '(hammerspoon-edit-begin)'"
 
   spoon.editWithEmacs:bindHotkeys({
       selection = {hyper, "e"},

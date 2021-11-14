@@ -26,7 +26,7 @@ obj.currentEmacs = nil
 obj.currentWindow = nil
 
 -- The command to invoke
-obj.beginEditShellCommand = "emacsclient -e '(hammerspoon-edit-begin)' --create-frame"
+obj.openEditorShellCommand = "emacsclient -e '(hammerspoon-edit-begin)' --create-frame"
 
 -- The name of the Emacs application
 obj.emacsAppName = "Emacs"
@@ -50,7 +50,7 @@ function obj:openEditor()
    -- this can probably be done more reliably with emacsclient
    if self.currentEmacs then
       -- Prior comments indicate that the emacsclient approach does not reliably work.
-      hs.execute(self.beginEditShellCommand, true)
+      hs.execute(self.openEditorShellCommand, true)
       self.currentEmacs:activate()
 
       -- Commented out in case the emacsclient stops reliably working.
