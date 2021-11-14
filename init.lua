@@ -117,7 +117,6 @@ function obj:endEditing(everything)
    -- the text is in the clipboard
    -- enable the original window and see what happens
    -- this is usually run by emacs using hs
-   -- hs -c "emacs_sends_back()"
 
    print("emacs is sending back the text")
 
