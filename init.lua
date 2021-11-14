@@ -63,7 +63,7 @@ function obj:openEditor()
       -- hs.eventtap.keyStrokes("\n")
    else
       -- this should not be executed
-      hs.alert("No emacs window found")
+      hs.alert("No " .. self.emacsAppName .. " window found")
    end
 end
 
@@ -73,13 +73,13 @@ function obj:beginEditing(everything)
    ---            select everything
    w = hs.window.focusedWindow()
    if w:title():sub(1, 5) == self.emacsAppName then
-      hs.alert("🤔 already in emacs. Ignoring request")
+      hs.alert("🤔 already in " .. self.emacsAppName .. ". Ignoring request")
       return
    end
    self.currentEmacs = hs.application.find(self.emacsAppName)
 
    if not self.currentEmacs then
-      hs.alert("No Emacs window found. Ignoring request")
+      hs.alert("No " .. self.emacsAppName .. " window found. Ignoring request")
       return
    end
 
@@ -98,7 +98,7 @@ function obj:beginEditing(everything)
       hs.eventtap.keyStroke({"cmd"}, "x")
    end
 
-   hs.notify.new({title=w:application():title(), informativeText="«" .. w:title() .. "»", subTitle="Editing in Emacs"}):send()
+   hs.notify.new({title=w:application():title(), informativeText="«" .. w:title() .. "»", subTitle="Editing in " .. self.emacsAppName}):send()
    self:openEditor()
 end
 
@@ -118,7 +118,7 @@ function obj:endEditing(everything)
    -- enable the original window and see what happens
    -- this is usually run by emacs using hs
 
-   print("emacs is sending back the text")
+   print(self.emacsAppName .. " is sending back the text")
 
    if not self.currentWindow then
       hs.alert("No current window active")
@@ -135,6 +135,6 @@ function obj:endEditing(everything)
 
 end
 
-print("Finished loading editWithEmacs spoon" )
+print("Finished loading editWithEmacs.spoon" )
 
 return obj
