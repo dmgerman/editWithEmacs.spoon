@@ -96,8 +96,7 @@ function obj:beginEditing(everything)
    end
 
    hs.notify.new({title=w:application():title(), informativeText="«" .. w:title() .. "»", subTitle="Editing in Emacs"}):send()
-
-   hs.timer.doAfter(0.1, obj:openEditor())
+   self:openEditor()
 end
 
 function obj:bindHotkeys(mapping)
