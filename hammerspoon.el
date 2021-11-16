@@ -1,6 +1,8 @@
 ;;; editWithEmacs.el --- communicate with hammerspoon to editWithEmacs anywhere
 
-;; Copyright (C) 2021 Free Software Foundation, Inc.
+;; Copyright (C) 2021 Daniel M. German <dmg@turingmachine.org>
+;;                             Jeremy Friesen <emacs@jeremyfriesen.com>
+;;
 
 ;; Author: Daniel M. German <dmg@turingmachine.org>
 ;;         Jeremy Friesen <emacs@jeremyfriesen.com>
