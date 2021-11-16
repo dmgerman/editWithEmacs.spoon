@@ -1,7 +1,4 @@
 ---
---- dmg hammerspoon
----
-print("Starting loading editWithEmacs spoon")
 
 local obj={}
 
@@ -10,12 +7,9 @@ obj.__index = obj
 -- metadata for all spoons
 obj.name = "editWithEmacs"
 obj.version = "0.2"
-obj.author = "Jeremy Friesen <emacs@jeremyfriesen.com>"
-obj.homepage = "https://github.com/jeremyf/editWithEmacs"
+obj.author = "Daniel German <dmg@uvic.ca> and  Jeremy Friesen <emacs@jeremyfriesen.com>"
+obj.homepage = "https://github.com/dmgerman/editWithEmacs.spoon"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
-
--- Paying homage to the prior work
-obj.derivedFrom = "http://github.com/dmgerman/editWithEmacs"
 
 -- Additional local variables for managing the state of editing.
 
@@ -26,7 +20,8 @@ obj.currentEmacs = nil
 obj.currentWindow = nil
 
 -- The command to invoke
-obj.openEditorShellCommand = "emacsclient -e '(hammerspoon-edit-begin)' --create-frame"
+-- make it non-blocking
+obj.openEditorShellCommand = "emacsclient -e '(hammerspoon-edit-begin)' --create-frame -n"
 
 -- The name of the Emacs application
 obj.emacsAppName = "Emacs"
@@ -47,19 +42,8 @@ end
 -- Open the editor and give it focus.
 function obj:openEditor()
    if self.currentEmacs then
-      -- Prior comments indicate that the emacsclient approach does not reliably work.
-      -- With my EDITOR configuration, I've noticed that this does work reliably.
       hs.execute(self.openEditorShellCommand, true)
       self.currentEmacs:activate()
-
-      -- Commented out in case the emacsclient stops reliably working.
-      -- What is happening below is that with the above obj.currentEmacs:activate() we
-      -- are in the emacs editor.  We then want to open the M-x minibuffer, type
-      -- hammerspoon-edit-begin and then hit return
-
-      -- hs.eventtap.keyStroke({"alt"}, "x")
-      -- hs.eventtap.keyStrokes("hammerspoon-edit-begin")
-      -- hs.eventtap.keyStrokes("\n")
    else
       -- this should not be executed
       hs.alert("No " .. self.emacsAppName .. " window found")
