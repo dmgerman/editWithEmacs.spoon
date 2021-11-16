@@ -1,25 +1,30 @@
-
----
---- dmg hammerspoon
 ---
 
 local obj={}
 
 obj.__index = obj
 
--- metadata
-
+-- metadata for all spoons
 obj.name = "editWithEmacs"
-obj.version = "0.1"
-obj.author = "dmg <dmg@uvic.ca>"
-obj.homepage = "https://github.com/dmgerman/hs-edit-with-emacs"
+obj.version = "0.2"
+obj.author = "Daniel German <dmg@uvic.ca> and  Jeremy Friesen <emacs@jeremyfriesen.com>"
+obj.homepage = "https://github.com/dmgerman/editWithEmacs.spoon"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
 
+-- Additional local variables for managing the state of editing.
 
-obj.emacs = nil         -- the application itselt
-obj.current_win = nil   -- the current emacs window
+-- the current instance of Emacs
+obj.currentEmacs = nil
+
+-- the current non-Emacs window from which we will begin editing
+obj.currentWindow = nil
+
+-- The command to invoke
+-- make it non-blocking
+obj.openEditorShellCommand = "emacsclient -e '(hammerspoon-edit-begin)' --create-frame -n"
+
+-- The name of the Emacs application
 obj.emacsAppName = "Emacs"
-obj.emacsClientAppName = "EmacsClient"
 
 require ("hs.ipc")
 
@@ -34,40 +39,34 @@ if not hs.ipc.cliStatus() then
    end
 end
 
-function do_emacs()
-   -- this is a callback to wait until other keys are consumed
-   -- this can probably be done more reliably with emacsclient
-   if obj.emacs then
-      obj.emacs:activate()
-      -- We want to call `M-x' (e.g., `execute-extended-command')
-      hs.eventtap.keyStroke({"alt"}, "x")
-      -- command to execute in emacs
-      hs.eventtap.keyStrokes("hammerspoon-edit-begin")
-      hs.eventtap.keyStrokes("\n")
--- this does not seem to work reliable
---      hs.execute("emacsclient -e '(hammerspoon-edit-begin)", true)
+-- Open the editor and give it focus.
+function obj:openEditor()
+   if self.currentEmacs then
+      hs.execute(self.openEditorShellCommand, true)
+      self.currentEmacs:activate()
    else
       -- this should not be executed
-      hs.alert("No emacs window found")
+      hs.alert("No " .. self.emacsAppName .. " window found")
    end
 end
 
-function edit_in_emacs(everything)
+-- Begin the edit with Emacs experience
+function obj:beginEditing(everything)
    -- everything: if true, do the equivalent of Ctrl-A
    ---            select everything
    w = hs.window.focusedWindow()
-   if w:title():sub(1, 5) == obj.emacsAppName then
-      hs.alert("🤔 already in emacs. Ignoring request")
+   if w:title():sub(1, 5) == self.emacsAppName then
+      hs.alert("🤔 already in " .. self.emacsAppName .. ". Ignoring request")
       return
    end
-   obj.emacs = hs.application.find(obj.emacsAppName)
+   self.currentEmacs = hs.application.find(self.emacsAppName)
 
-   if not obj.emacs then
-      hs.alert("No Emacs window found. Ignoring request")
+   if not self.currentEmacs then
+      hs.alert("No " .. self.emacsAppName .. " window found. Ignoring request")
       return
    end
 
-   obj.current_win = w
+   self.currentWindow = w
 
    -- use the selection as the text to send to emacs
    -- we use the clipboard to communicate both ways with emacs...
@@ -82,21 +81,32 @@ function edit_in_emacs(everything)
       hs.eventtap.keyStroke({"cmd"}, "x")
    end
 
-   hs.timer.doAfter(0.5,do_emacs)
+   hs.notify.new({title=w:application():title(), informativeText="«" .. w:title() .. "»", subTitle="Editing in " .. self.emacsAppName}):send()
+   self:openEditor()
 end
 
-function emacs_sends_back(everything)
+function obj:bindHotkeys(mapping)
+   hs.inspect(mapping)
+   print("Bind Hotkeys for editWithEmacs")
+   hs.hotkey.bind(mapping.selection[1], mapping.selection[2], function ()
+      self:beginEditing(false)
+   end)
+   hs.hotkey.bind(mapping.all[1], mapping.all[2], function ()
+      self:beginEditing(true)
+   end)
+end
+
+function obj:endEditing(everything)
    -- the text is in the clipboard
    -- enable the original window and see what happens
    -- this is usually run by emacs using hs
-   -- hs -c "emacs_sends_back()"
 
-   print("emacs is sending back the text")
+   print(self.emacsAppName .. " is sending back the text")
 
-   if not obj.current_win then
+   if not self.currentWindow then
       hs.alert("No current window active")
    else
-      if (obj.current_win:focus()) then
+      if (self.currentWindow:focus()) then
          if everything then
             hs.eventtap.keyStroke({"cmd"}, "a")
          end
@@ -108,32 +118,6 @@ function emacs_sends_back(everything)
 
 end
 
--- make sure that emacs is brought to the front when EmacsClient is executed
-
-function emacsclientWatcher(appName, eventType, appObject)
-   if (eventType == hs.application.watcher.activated) then
-      if (appName == obj.emacsClientAppName) then
-         -- Bring Emacs to Front
-         hs.osascript.applescript('tell application "Emacs" to activate')
-      end
-   end
-end
-appWatcher = hs.application.watcher.new(emacsclientWatcher)
-appWatcher:start()
-
-
--- edit by selecting everything
-hs.hotkey.bind({"alt"}, '2', nil, function()
-      edit_in_emacs(true)
-end)
-
--- edit by using current selection
-hs.hotkey.bind({"alt"}, '3', nil, function()
-      edit_in_emacs(false)
-end)
-
-print("Finished loading editWithEmacs spoon" )
-
-
+print("Finished loading editWithEmacs.spoon" )
 
 return obj
