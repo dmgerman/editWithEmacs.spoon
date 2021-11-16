@@ -10,8 +10,9 @@
 (unless hammerspoon-edit-minor-map
   (let ((map (make-sparse-keymap)))
 
-    (define-key map (kbd "C-c C-c")   'hammerspoon-edit-end)
-    (define-key map (kbd "C-c h")     'hammerspoon-test) ;; for testing
+    (define-key map (kbd "C-c C-c") 'hammerspoon-edit-end)
+    (define-key map (kbd "C-c m")   'hammerspoon-toggle-mode)
+    (define-key map (kbd "C-c h")   'hammerspoon-test) ;; for testing
 
     (setq hammerspoon-edit-minor-map map)))
 
@@ -26,6 +27,13 @@
   ;; Emacs undo can work
   )
 
+(defun hammerspoon-toggle-mode ()
+  "Toggle from Markdown Mode to Org Mode."
+  (interactive)
+  (if (string-equal "markdown-mode" (format "%s" major-mode))
+      (org-mode)
+    (markdown-mode))
+  (hammerspoon-edit-minor-mode))
 
 (defun hammerspoon-do (command)
   "Send Hammerspoon the given COMMAND."
