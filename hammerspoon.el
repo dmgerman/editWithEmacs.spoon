@@ -1,3 +1,37 @@
+;;; editWithEmacs.el --- communicate with hammerspoon to editWithEmacs anywhere
+
+;; Copyright (C) 2021 Free Software Foundation, Inc.
+
+;; Author: Daniel M. German <dmg@turingmachine.org>
+;;         Jeremy Friesen <emacs@jeremyfriesen.com>
+;; 
+;; Maintainer: Daniel M. German <dmg@turingmachine.org>
+;;
+;; Keywords: hammerspoon, os x
+;; Homepage: https://github.com/dmgerman/editWithEmacs.spoon
+
+;; GNU Emacs is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; GNU Emacs is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;; Use emacs and hammerspoon to edit text in any input box in os x
+;; See: https://github.com/dmgerman/editWithEmacs.spoon
+;;
+
+;;; Code:
+
+
 (defvar hammerspoon-buffer-mode 'markdown-mode
   "Name of major mode for hammerspoon editing")
 
