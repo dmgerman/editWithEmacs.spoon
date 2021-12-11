@@ -35,6 +35,11 @@ if not hs.ipc.cliStatus() then
    -- add the directory to your path
    if not hs.ipc.cliInstall() then
       hs.alert("Unable to install ipc module in /usr/local. editWithEmacs will not function.")
+      print("\n\neditWithEmacs: unable to install ipc module. You might have to do it manually. ",
+            "Make sure you can execute /usr/local/bin/hs from command line. See documentation of hs.ipc\n",
+            "For example: at /usr/local do\n",
+            "sudo ln -s /Applications/Hammerspoon.app/Contents/Resources/extensions/hs/ipc/bin/hs .\n",
+            "\n")
       return obj
    end
 end
@@ -86,14 +91,11 @@ function obj:beginEditing(everything)
 end
 
 function obj:bindHotkeys(mapping)
-   hs.inspect(mapping)
-   print("Bind Hotkeys for editWithEmacs")
-   hs.hotkey.bind(mapping.selection[1], mapping.selection[2], function ()
-      self:beginEditing(false)
-   end)
-   hs.hotkey.bind(mapping.all[1], mapping.all[2], function ()
-      self:beginEditing(true)
-   end)
+   local def = {
+      edit_selection = function() self:beginEditing(false) end,
+      edit_all       = function() self:beginEditing(true) end
+   }
+   hs.spoons.bindHotkeysToSpec(def, mapping)
 end
 
 function obj:endEditing(everything)
