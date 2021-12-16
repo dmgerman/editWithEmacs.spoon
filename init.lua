@@ -33,12 +33,13 @@ if not hs.ipc.cliStatus() then
    -- if this fails, try to install to a different location
    -- e.g. hs.ipc.cliInstall('/Users/<yourusername>/bin') and
    -- add the directory to your path
-   if not hs.ipc.cliInstall() then
+   hs.ipc.cliInstall()
+   if not hs.ipc.cliStatus() then
       hs.alert("Unable to install ipc module in /usr/local. editWithEmacs will not function.")
       print("\n\neditWithEmacs: unable to install ipc module. You might have to do it manually. ",
             "Make sure you can execute /usr/local/bin/hs from command line. See documentation of hs.ipc\n",
             "For example: at /usr/local do\n",
-            "sudo ln -s /Applications/Hammerspoon.app/Contents/Resources/extensions/hs/ipc/bin/hs .\n",
+            "sudo ln -s /Applications/Hammerspoon.app/Contents/Frameworks/hs/hs .\n",
             "\n")
       return obj
    end
