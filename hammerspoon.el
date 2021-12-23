@@ -112,3 +112,6 @@ If you see a message, Hammerspoon is working correctly."
     (hammerspoon-edit-minor-mode)
     (message "Type C-c C-c to send back to originating window")
     (exchange-point-and-mark)))
+
+
+(provide 'hammerspoon)
