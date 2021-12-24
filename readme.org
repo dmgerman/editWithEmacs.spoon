@@ -51,7 +51,10 @@ end
 Load the =hammerspoon.el= file in Emacs.
 
 #+begin_src emacs-lisp :lexical no
-  (load "~/.hammerspoon/Spoons/editWithEmacs.spoon/hammerspoon.el")
+  ;; If the hammerspoon configuration is present, and so is this spoon, load it
+  (if (file-readable-p "~/.hammerspoon/Spoons/editWithemacs.spoon/hammerspoon.el")
+    (let ((load-path (cons "~/.hammerspoon/Spoons/editWithemacs.spoon" load-path )))
+      (require 'hammerspoon)))
 #+end_src
 
 * Testing installation
