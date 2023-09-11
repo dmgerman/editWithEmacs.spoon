@@ -37,8 +37,8 @@ if not hs.ipc.cliStatus() then
    if not hs.ipc.cliStatus() then
       hs.alert("Unable to install ipc module in /usr/local. editWithEmacs will not function.")
       print("\n\neditWithEmacs: unable to install ipc module. You might have to do it manually. This works for M1 macs.",
-            "Make sure you can execute /usr/local/bin/hs from command line. See documentation of hs.ipc\n",
-            "For example: at /usr/local do\n",
+            "Make sure you can execute hs from command line. See documentation of hs.ipc\n",
+            "For example: at /usr/local/bin do\n",
             "sudo ln -s /Applications/Hammerspoon.app/Contents/Frameworks/hs/hs .\n",
             "\n")
       return obj
