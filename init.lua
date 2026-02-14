@@ -96,7 +96,17 @@ function obj:bindHotkeys(mapping)
       edit_selection = function() self:beginEditing(false) end,
       edit_all       = function() self:beginEditing(true) end
    }
-   hs.spoons.bindHotkeysToSpec(def, mapping)
+   local descriptions = {
+      edit_selection = "Edit selection with Emacs [Emacs]",
+      edit_all       = "Edit all text with Emacs [Emacs]"
+   }
+
+   -- Bind hotkeys manually with descriptions instead of using bindHotkeysToSpec
+   for name, spec in pairs(mapping) do
+      if def[name] then
+         hs.hotkey.bind(spec[1], spec[2], descriptions[name] or ("Edit with Emacs [Emacs]"), def[name])
+      end
+   end
 end
 
 function obj:endEditing(everything)
