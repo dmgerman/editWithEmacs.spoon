@@ -99,7 +99,7 @@ If you see a message, Hammerspoon is working correctly."
   (mark-whole-buffer)
   (call-interactively 'kill-ring-save)
   (hammerspoon-do (concat "spoon.editWithEmacs:endEditing(False)"))
-  (previous-buffer))
+  (delete-frame (selected-frame))))
 
 (defun hammerspoon-edit-begin ()
   "Receive, from Hammerspoon, text to edit in Emacs"
