@@ -21,7 +21,7 @@ obj.currentWindow = nil
 
 -- The command to invoke
 -- make it non-blocking
-obj.openEditorShellCommand = "emacsclient -e '(hammerspoon-edit-begin)' --create-frame -n"
+obj.openEditorShellCommand = "emacsclient -e '(emacs-everywhere)'"
 
 -- The name of the Emacs application
 obj.emacsAppName = "Emacs"
