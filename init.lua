@@ -6,22 +6,10 @@ obj.__index = obj
 
 -- metadata for all spoons
 obj.name = "editWithEmacs"
-obj.version = "0.2"
+obj.version = "0.3"
 obj.author = "Daniel German <dmg@uvic.ca> and  Jeremy Friesen <emacs@jeremyfriesen.com>"
 obj.homepage = "https://github.com/dmgerman/editWithEmacs.spoon"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
-
--- Additional local variables for managing the state of editing.
-
--- the current instance of Emacs
-obj.currentEmacs = nil
-
--- the current non-Emacs window from which we will begin editing
-obj.currentWindow = nil
-
--- The command to invoke
--- make it non-blocking
-obj.openEditorShellCommand = "emacsclient -e '(emacs-everywhere)'"
 
 -- The name of the Emacs application
 obj.emacsAppName = "Emacs"
@@ -30,9 +18,6 @@ require ("hs.ipc")
 
 if not hs.ipc.cliStatus() then
    hs.alert("hs is not installed.. Installing in default location.. This might not work for M1 emacs")
-   -- if this fails, try to install to a different location
-   -- e.g. hs.ipc.cliInstall('/Users/<yourusername>/bin') and
-   -- add the directory to your path
    hs.ipc.cliInstall()
    if not hs.ipc.cliStatus() then
       hs.alert("Unable to install ipc module in /usr/local. editWithEmacs will not function.")
@@ -45,49 +30,79 @@ if not hs.ipc.cliStatus() then
    end
 end
 
--- Open the editor and give it focus.
-function obj:openEditor()
-   if self.currentEmacs then
-      hs.execute(self.openEditorShellCommand, true)
-      self.currentEmacs:activate()
-   else
-      -- this should not be executed
-      hs.alert("No " .. self.emacsAppName .. " window found")
+-- Return geometry and app info for a window by ID, for Emacs to query.
+-- Format: x||y||w||h||appName||winTitle
+function obj:getWindowInfo(windowId)
+   local w = hs.window.get(windowId)
+   if not w then
+      return "0||0||0||0||unknown||unknown"
    end
+   local f = w:frame()
+   return math.floor(f.x) .. "||" .. math.floor(f.y) .. "||" ..
+          math.floor(f.w) .. "||" .. math.floor(f.h) .. "||" ..
+          w:application():name() .. "||" .. w:title()
+end
+
+-- Call emacs-everywhere for the given window ID.
+-- Uses hs.task (non-blocking) so Hammerspoon remains free to answer
+-- the getWindowInfo() callback from dmg-emacs-everywhere-app-info.
+function obj:openEditor()
+   if not self.currentEmacs then
+      hs.alert("No " .. self.emacsAppName .. " window found")
+      return
+   end
+   print("editWithEmacs: emacsclient -e '(emacs-everywhere)'")
+   local task = hs.task.new("/Users/dmg/bin/osx/emacsclient", function(exitCode, stdOut, stdErr)
+      if exitCode ~= 0 then
+         local msg = "editWithEmacs: emacsclient failed (rc=" .. tostring(exitCode) .. "): " .. stdErr
+         print(msg)
+         hs.alert(msg)
+      end
+   end, {"-e", "(emacs-everywhere)"})
+   task:start()
+   self.currentEmacs:activate()
 end
 
 -- Begin the edit with Emacs experience
 function obj:beginEditing(everything)
-   -- everything: if true, do the equivalent of Ctrl-A
-   ---            select everything
-   w = hs.window.focusedWindow()
+   -- everything: if true, do the equivalent of Ctrl-A select everything
+   local w = hs.window.focusedWindow()
+   if not w then
+      hs.alert("No focused window found. Ignoring request")
+      return
+   end
    if w:title():sub(1, 5) == self.emacsAppName then
       hs.alert("🤔 already in " .. self.emacsAppName .. ". Ignoring request")
       return
    end
    self.currentEmacs = hs.application.find(self.emacsAppName)
-
    if not self.currentEmacs then
       hs.alert("No " .. self.emacsAppName .. " window found. Ignoring request")
       return
    end
 
-   self.currentWindow = w
+   local windowId = w:id()
+   local appName = w:application():name()
+   local winTitle = w:title()
+   local frame = w:frame()
 
-   -- use the selection as the text to send to emacs
-   -- we use the clipboard to communicate both ways with emacs...
-   -- there could be other ways, but this is simple and effective
+   -- Write window info to temp file for Emacs to read (avoids IPC round-trip).
+   -- Format: windowId||x||y||w||h||appName||winTitle
+   local info = windowId .. "||" ..
+                math.floor(frame.x) .. "||" .. math.floor(frame.y) .. "||" ..
+                math.floor(frame.w) .. "||" .. math.floor(frame.h) .. "||" ..
+                appName .. "||" .. winTitle
+   local f = io.open("/tmp/emacs-everywhere.txt", "w")
+   if f then f:write(info) ; f:close() end
+
    if everything then
-      -- this basically says, ignore current selection and select current text
       hs.eventtap.keyStroke({"cmd"}, "a")
-      -- copy selection into the clipboard
       hs.eventtap.keyStroke({"cmd"}, "c")
    else
-      -- otherwise we have to cut,
       hs.eventtap.keyStroke({"cmd"}, "x")
    end
 
-   hs.notify.new({title=w:application():title(), informativeText="«" .. w:title() .. "»", subTitle="Editing in " .. self.emacsAppName}):send()
+   hs.notify.new({title=appName, informativeText="«" .. winTitle .. "»", subTitle="Editing in " .. self.emacsAppName}):send()
    self:openEditor()
 end
 
@@ -101,7 +116,6 @@ function obj:bindHotkeys(mapping)
       edit_all       = "Edit all text with Emacs [Emacs]"
    }
 
-   -- Bind hotkeys manually with descriptions instead of using bindHotkeysToSpec
    for name, spec in pairs(mapping) do
       if def[name] then
          hs.hotkey.bind(spec[1], spec[2], descriptions[name] or ("Edit with Emacs [Emacs]"), def[name])
@@ -109,26 +123,23 @@ function obj:bindHotkeys(mapping)
    end
 end
 
-function obj:endEditing(everything)
-   -- the text is in the clipboard
-   -- enable the original window and see what happens
-   -- this is usually run by emacs using hs
+function obj:endEditing(windowId, everything)
+   assert(windowId ~= nil, "endEditing: windowId is nil")
+   assert(type(windowId) == "number", "endEditing: windowId is not a number, got " .. type(windowId))
+
+   local w = hs.window.get(windowId)
+   assert(w ~= nil, "endEditing: no window found for id " .. windowId)
 
    print(self.emacsAppName .. " is sending back the text")
 
-   if not self.currentWindow then
-      hs.alert("No current window active")
-   else
-      if (self.currentWindow:focus()) then
-         if everything then
-            hs.eventtap.keyStroke({"cmd"}, "a")
-         end
-         hs.eventtap.keyStroke({"cmd"}, "v")
-      else
-         hs.alert("Window to send back text does not exist any more")
+   if w:focus() then
+      if everything then
+         hs.eventtap.keyStroke({"cmd"}, "a")
       end
+      hs.eventtap.keyStroke({"cmd"}, "v")
+   else
+      hs.alert("Could not focus window " .. windowId)
    end
-
 end
 
 print("Finished loading editWithEmacs.spoon" )
