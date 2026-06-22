@@ -6,13 +6,23 @@ obj.__index = obj
 
 -- metadata for all spoons
 obj.name = "editWithEmacs"
-obj.version = "0.3"
+obj.version = "0.4"
 obj.author = "Daniel German <dmg@uvic.ca> and  Jeremy Friesen <emacs@jeremyfriesen.com>"
 obj.homepage = "https://github.com/dmgerman/editWithEmacs.spoon"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
 
+obj.logger = hs.logger.new("editWithEmacs")
+
 -- The name of the Emacs application
 obj.emacsAppName = "Emacs"
+
+-- Path to emacsclient. Override in configuration if needed.
+obj.emacsClient = "/opt/homebrew/bin/emacsclient"
+
+-- Cached Emacs server socket path, populated on first socket-not-found failure
+-- by querying the running Emacs process with lsof. Invalidated on subsequent
+-- socket failures so a restarted server is re-discovered.
+obj.socketPath = nil
 
 require ("hs.ipc")
 
@@ -21,11 +31,10 @@ if not hs.ipc.cliStatus() then
    hs.ipc.cliInstall()
    if not hs.ipc.cliStatus() then
       hs.alert("Unable to install ipc module in /usr/local. editWithEmacs will not function.")
-      print("\n\neditWithEmacs: unable to install ipc module. You might have to do it manually. This works for M1 macs.",
-            "Make sure you can execute hs from command line. See documentation of hs.ipc\n",
-            "For example: at /usr/local/bin do\n",
-            "sudo ln -s /Applications/Hammerspoon.app/Contents/Frameworks/hs/hs .\n",
-            "\n")
+      obj.logger.e("unable to install ipc module. You might have to do it manually. This works for M1 macs. "
+                .. "Make sure you can execute hs from command line. See documentation of hs.ipc. "
+                .. "For example: at /usr/local/bin do "
+                .. "sudo ln -s /Applications/Hammerspoon.app/Contents/Frameworks/hs/hs .")
       return obj
    end
 end
@@ -43,23 +52,120 @@ function obj:getWindowInfo(windowId)
           w:application():name() .. "||" .. w:title()
 end
 
--- Call emacs-everywhere for the given window ID.
--- Uses hs.task (non-blocking) so Hammerspoon remains free to answer
--- the getWindowInfo() callback from dmg-emacs-everywhere-app-info.
+-- Discover the Emacs server socket path via lsof on the running Emacs process.
+-- Calls onDone(socketPath) on success, onDone(nil) on failure (after alerting).
+-- lsof completes in ~100ms on a typical Emacs process; we use hs.execute
+-- (synchronous) for simplicity and to avoid hs.task buffering quirks with the
+-- large lsof output.
+function obj:discoverSocketAsync(onDone)
+   local app = hs.application.find(self.emacsAppName)
+   if not app then
+      hs.alert(self.emacsAppName .. " is not running")
+      onDone(nil)
+      return
+   end
+   local pid = app:pid()
+   if not pid then
+      hs.alert("Could not get pid for " .. self.emacsAppName)
+      onDone(nil)
+      return
+   end
+   self.logger.f("discovering socket via lsof -p %d", pid)
+   local cmd = string.format("/usr/sbin/lsof -p %d 2>&1 | /usr/bin/grep -Eo '/[^[:space:]]*/emacs[0-9]+/[^[:space:]/]+' | /usr/bin/head -1",
+                             pid)
+   local out, ok = hs.execute(cmd)
+   if not ok or not out or out == "" then
+      local msg = "could not find " .. self.emacsAppName .. " server socket"
+      self.logger.e(msg)
+      hs.alert(msg)
+      onDone(nil)
+      return
+   end
+   local socket = out:gsub("%s+$", "")
+   self.logger.f("discovered socket %s", socket)
+   self.socketPath = socket
+   onDone(socket)
+end
+
+-- Build the argv for emacsclient, prepending --socket-name when cached.
+function obj:emacsClientArgv(args)
+   local argv = {}
+   if self.socketPath then
+      table.insert(argv, "--socket-name=" .. self.socketPath)
+   end
+   for _, a in ipairs(args) do
+      table.insert(argv, a)
+   end
+   return argv
+end
+
+-- Invoke emacsclient asynchronously. On a "can't find socket" failure, discover
+-- the socket via lsof and retry once. Other failures alert and stop.
+function obj:runEmacsClient(args, attempted, callback)
+   local argv = self:emacsClientArgv(args)
+   self.logger.f("%s %s", self.emacsClient, table.concat(argv, " "))
+   -- Retain the hs.task in self._pendingTasks until its callback fires; without
+   -- a live Lua reference the task can be garbage-collected mid-flight and the
+   -- callback never runs.
+   self._pendingTasks = self._pendingTasks or {}
+   local task
+   task = hs.task.new(self.emacsClient, function(rc, stdOut, stdErr)
+      self._pendingTasks[task] = nil
+      if rc == 0 then
+         if callback then callback(rc, stdOut, stdErr) end
+         return
+      end
+
+      local isSocketErr = stdErr and stdErr:find("can't find socket", 1, true) ~= nil
+      if isSocketErr and not attempted then
+         self.socketPath = nil
+         self:discoverSocketAsync(function(path)
+            if path then
+               self:runEmacsClient(args, true, callback)
+            elseif callback then
+               callback(rc, stdOut, stdErr)
+            end
+         end)
+         return
+      end
+
+      local msg = string.format("emacsclient failed (rc=%d): %s", rc, tostring(stdErr))
+      self.logger.e(msg)
+      if callback then
+         callback(rc, stdOut, stdErr)
+      else
+         hs.alert(msg)
+      end
+   end, argv)
+   self._pendingTasks[task] = true
+   task:start()
+end
+
+-- Execute Emacs Lisp code asynchronously via emacsclient. The optional callback
+-- receives (rc, stdOut, stdErr) once the call resolves (after any auto-retry).
+-- When a callback is supplied, default failure alerts are suppressed so the
+-- caller can handle errors.
+function obj:emacsExecute(elispCode, callback)
+   self:runEmacsClient({"-e", elispCode}, false, callback)
+end
+
+-- Round-trip test for the Hammerspoon console. Sends a (message ...) form to
+-- Emacs; on success it appears in Emacs's *Messages* buffer, on failure
+-- runEmacsClient alerts the user.
+function obj:test()
+   self:emacsExecute(string.format('(message "editWithEmacs test %s")',
+                                   os.date("%H:%M:%S")))
+end
+
+-- Call emacs-everywhere on the current window. Uses hs.task (non-blocking) so
+-- Hammerspoon remains free to answer the getWindowInfo() callback from
+-- dmg-emacs-everywhere-app-info.
 function obj:openEditor()
    if not self.currentEmacs then
       hs.alert("No " .. self.emacsAppName .. " window found")
       return
    end
-   print("editWithEmacs: emacsclient -e '(emacs-everywhere)'")
-   local task = hs.task.new("/Users/dmg/bin/osx/emacsclient", function(exitCode, stdOut, stdErr)
-      if exitCode ~= 0 then
-         local msg = "editWithEmacs: emacsclient failed (rc=" .. tostring(exitCode) .. "): " .. stdErr
-         print(msg)
-         hs.alert(msg)
-      end
-   end, {"-e", "(emacs-everywhere)"})
-   task:start()
+   self:emacsExecute("(emacs-everywhere)")
    self.currentEmacs:activate()
 end
 
@@ -130,7 +236,7 @@ function obj:endEditing(windowId, everything)
    local w = hs.window.get(windowId)
    assert(w ~= nil, "endEditing: no window found for id " .. windowId)
 
-   print(self.emacsAppName .. " is sending back the text")
+   self.logger.f("%s is sending back the text", self.emacsAppName)
 
    if w:focus() then
       if everything then
@@ -142,6 +248,6 @@ function obj:endEditing(windowId, everything)
    end
 end
 
-print("Finished loading editWithEmacs.spoon" )
+obj.logger.i("Finished loading editWithEmacs.spoon")
 
 return obj

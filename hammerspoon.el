@@ -1,14 +1,11 @@
-;;; editWithEmacs.el --- communicate with hammerspoon to editWithEmacs anywhere
+;;; hammerspoon.el --- communicate with Hammerspoon for editWithEmacs
 
-;; Copyright (C) 2021 Daniel M. German <dmg@turingmachine.org>
-;;                             Jeremy Friesen <emacs@jeremyfriesen.com>
-;;
+;; Copyright (C) 2021-26 Daniel M. German <dmg@turingmachine.org>
+;; Copyright (C) 2021 Jeremy Friesen <emacs@jeremyfriesen.com>
 
 ;; Author: Daniel M. German <dmg@turingmachine.org>
 ;;         Jeremy Friesen <emacs@jeremyfriesen.com>
-;; 
 ;; Maintainer: Daniel M. German <dmg@turingmachine.org>
-;;
 ;; Keywords: hammerspoon, os x
 ;; Homepage: https://github.com/dmgerman/editWithEmacs.spoon
 
@@ -17,101 +14,84 @@
 ;; the Free Software Foundation, either version 3 of the License, or
 ;; (at your option) any later version.
 
-;; GNU Emacs is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
-
-;; You should have received a copy of the GNU General Public License
-;; along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
-
-;;; Commentary:
-
-;; Use emacs and hammerspoon to edit text in any input box in os x
-;; See: https://github.com/dmgerman/editWithEmacs.spoon
-;;
-
 ;;; Code:
-
-
-(defvar hammerspoon-buffer-mode 'markdown-mode
-  "Name of major mode for hammerspoon editing")
-
-(defvar hammerspoon-buffer-name "*hammerspoon_edit*"
-  "Name of the buffer used to edit in emacs.")
-
-(defvar hammerspoon-edit-minor-map nil
-  "Keymap used in hammer-edit-minor-mode.")
-
-(unless hammerspoon-edit-minor-map
-  (let ((map (make-sparse-keymap)))
-
-    (define-key map (kbd "C-c C-c") 'hammerspoon-edit-end)
-    (define-key map (kbd "C-c m")   'hammerspoon-toggle-mode)
-    (define-key map (kbd "C-c h")   'hammerspoon-test) ;; for testing
-
-    (setq hammerspoon-edit-minor-map map)))
-
-(define-minor-mode hammerspoon-edit-minor-mode
-  "Minor mode to help with editing with hammerspoon"
-
-  :global nil
-  :lighter   "_hs-edit_"
-  :keymap hammerspoon-edit-minor-map
-
-  ;; if disabling `undo-tree-mode', rebuild `buffer-undo-list' from tree so
-  ;; Emacs undo can work
-  )
-
-(defun hammerspoon-toggle-mode ()
-  "Toggle from Markdown Mode to Org Mode."
-  (interactive)
-  (if (string-equal "markdown-mode" (format "%s" major-mode))
-      (org-mode)
-    (markdown-mode))
-  (hammerspoon-edit-minor-mode))
 
 (defun hammerspoon-do (command)
   "Send Hammerspoon the given COMMAND."
   (interactive "sHammerspoon Command:")
-  (setq hs-binary (executable-find "hs"))
-  (if hs-binary
-      (call-process hs-binary
-                    nil 0 nil
-                    "-c"
-                    command)
-    (message "Hammerspoon hs executable not found. Make sure you hammerspoon has loaded the ipc module")))
+  (let ((hs-binary (executable-find "hs")))
+    (if hs-binary
+        (condition-case err
+            (call-process hs-binary nil 0 nil "-q" "-c" command)
+          (error (message "hammerspoon-do error: %s" (error-message-string err))))
+      (message "Hammerspoon hs executable not found. Make sure hammerspoon has loaded the ipc module"))))
 
-(defun hammerspoon-alert (message)
-  "Show given MESSAGE via Hammerspoon's alert system."
-  (hammerspoon-do (concat "hs.alert.show('" message "', 1)")))
+(defun hammerspoon-alert (message &optional duration)
+  "Show given MESSAGE via Hammerspoon's alert system for DURATION seconds (default 5)."
+  (hammerspoon-do (format "hs.alert.show('%s', %d)" message (or duration 5))))
+
+(defun hammerspoon-alert-window (message &optional duration)
+  "Show given MESSAGE via Hammerspoon's alert on the current window for DURATION seconds (default 5)."
+  (hammerspoon-do (format "dmg_alert_on_window('%s', %d)" message (or duration 5))))
 
 (defun hammerspoon-test ()
-  "Show a test message via Hammerspoon's alert system.
-
-If you see a message, Hammerspoon is working correctly."
+  "Show a test message via Hammerspoon's alert system."
   (interactive)
   (hammerspoon-alert "Hammerspoon test message..."))
 
-(defun hammerspoon-edit-end ()
-  "Send, via Hammerspoon, contents of buffer back to originating window."
-  (interactive)
-  (mark-whole-buffer)
-  (call-interactively 'kill-ring-save)
-  (hammerspoon-do (concat "spoon.editWithEmacs:endEditing(False)"))
-  (previous-buffer))
+(defun hammerspoon-do-capture (command)
+  "Send Hammerspoon COMMAND and return its output as a string."
+  (let ((hs-binary (executable-find "hs")))
+    (if hs-binary
+        (with-temp-buffer
+          (call-process hs-binary nil t nil "-q" "-c" command)
+          (string-trim (buffer-string)))
+      (error "Hammerspoon hs executable not found"))))
 
-(defun hammerspoon-edit-begin ()
-  "Receive, from Hammerspoon, text to edit in Emacs"
-  (interactive)
-  (let ((hs-edit-buffer (get-buffer-create hammerspoon-buffer-name)))
-    (switch-to-buffer hs-edit-buffer)
-    (erase-buffer) ; Ensure we have a clean buffer
-    (yank)
-    (funcall hammerspoon-buffer-mode)
-    (hammerspoon-edit-minor-mode)
-    (message "Type C-c C-c to send back to originating window")
-    (exchange-point-and-mark)))
+(defun hammerspoon-emacs-everywhere-app-info ()
+  "Return an emacs-everywhere-app struct by reading /tmp/emacs-everywhere.txt."
+  (unless (file-exists-p "/tmp/emacs-everywhere.txt")
+    (error "emacs-everywhere: /tmp/emacs-everywhere.txt not found — Hammerspoon did not write window info"))
+  (let* ((raw (with-temp-buffer
+                (insert-file-contents "/tmp/emacs-everywhere.txt")
+                (string-trim (buffer-string))))
+         (parts (split-string raw (regexp-quote "||") t)))
+    (unless (>= (length parts) 6)
+      (error "emacs-everywhere: malformed window info: %S" raw))
+    (let ((win-id (nth 0 parts))
+          (x      (string-to-number (nth 1 parts)))
+          (y      (string-to-number (nth 2 parts)))
+          (w      (string-to-number (nth 3 parts)))
+          (h      (string-to-number (nth 4 parts)))
+          (app    (nth 5 parts))
+          (title  (string-join (nthcdr 6 parts) "||")))
+      (message "emacs-everywhere: editing \"%s\" in %s (window %s)" title app win-id)
+      (make-emacs-everywhere-app
+       :id       win-id
+       :class    app
+       :title    title
+       :geometry (list x y w h)))))
 
+(defun hammerspoon-emacs-everywhere-finish ()
+  "Send buffer contents back to Hammerspoon and close the emacs-everywhere frame.
+Sets clipboard via native Emacs (no AppleScript), then calls Hammerspoon endEditing."
+  (interactive)
+  (unless emacs-everywhere-mode
+    (error "emacs-everywhere-mode is not active in this buffer"))
+  (let* ((text (buffer-string))
+         (window-id (emacs-everywhere-app-id emacs-everywhere-current-app)))
+    (unless (equal text emacs-everywhere--contents)
+      (kill-new text)
+      (gui-select-text text)
+      (hammerspoon-do (format "spoon.editWithEmacs:endEditing(%s, false)" window-id)))
+    (set-buffer-modified-p nil)
+    (emacs-everywhere-mode -1)
+    (server-buffer-done (current-buffer))))
+
+(defun hammerspoon-emacs-everywhere-compositor (result)
+  "Redirect emacs-everywhere's system detection to the hammerspoon compositor."
+  (if (eq (car result) 'quartz)
+      '(hammerspoon . nil)
+    result))
 
 (provide 'hammerspoon)

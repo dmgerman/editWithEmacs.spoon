@@ -8,7 +8,7 @@ This module allows editing with Emacs anywhere in OS X.
 
 See this demo: [[https://youtu.be/jYUKYpXL6rI]]
 
-In any text field in any application, one can summon Emacs to edit text:
+In any text field in any application, the user can invoke Emacs to edit text:
 
 1. User is in a non-Emacs application, and presses the bound keys (see below).
 2. Emacs opens a buffer for editing.
@@ -32,31 +32,80 @@ Note, the =.spoon= extension is important.
 Modify your =~/.hammerspoon/init.lua= and add:
 
 #+begin_src lua
--- Optional configuration of beginEditShellCommand
-spoon.editWithEmacs.openEditorShellCommand = "EDITOR -e '(hammerspoon-edit-begin)'"
-
 hs.loadSpoon("editWithEmacs")
 if spoon.editWithEmacs then
+   -- Optional: override defaults
+   spoon.editWithEmacs.emacsClient  = "/opt/homebrew/bin/emacsclient"  -- default
+   spoon.editWithEmacs.emacsAppName = "Emacs"                          -- default
+
    local bindings = {
       edit_selection =  { {"alt"}, "1"},
       edit_all       = { {"alt"}, "2"}
-   }   
+   }
    spoon.editWithEmacs:bindHotkeys(bindings)
 end
-
 #+end_src
 
 ** Emacs
 
-Load the =hammerspoon.el= file in Emacs.
+The Emacs configuration requires two libraries:
+
+1. =hammerspoon.el= (included in this spoon) — provides =hammerspoon-do=,
+   =hammerspoon-emacs-everywhere-app-info=, =hammerspoon-emacs-everywhere-finish=,
+   and =hammerspoon-emacs-everywhere-compositor=.
+2. =emacs-everywhere= — use [[https://github.com/dmgerman/emacs-everywhere][the dmgerman fork]] until the patches are
+   merged upstream. The upstream version does not expose the hooks required
+   to register a custom compositor.
+
+Clone the fork to a local directory and set =:load-path= to it:
+
+#+begin_src sh
+git clone https://github.com/dmgerman/emacs-everywhere.git ~/.emacs.d/modules/emacs-everywhere
+#+end_src
+
+Then in your Emacs config:
 
 #+begin_src emacs-lisp :lexical no
-  (load "~/.hammerspoon/Spoons/editWithEmacs.spoon/hammerspoon.el")
+;; 1. Load the spoon's elisp helpers.
+(load "~/.hammerspoon/Spoons/editWithEmacs.spoon/hammerspoon.el")
+
+;; 2. Load emacs-everywhere from the fork and register the hammerspoon
+;;    compositor. Set :load-path to the directory where you cloned the fork.
+(use-package emacs-everywhere
+  :straight nil
+  :load-path "~/.emacs.d/modules/emacs-everywhere"
+  :config
+  (put 'emacs-everywhere-mode 'permanent-local t)
+  (add-to-list 'emacs-everywhere-system-configs
+               '(hammerspoon
+                 :info-function hammerspoon-emacs-everywhere-app-info
+                 :focus-command ("hs" "-q" "-c" "spoon.editWithEmacs:endEditing(%w, false)"))
+               t)
+  (advice-add 'emacs-everywhere--system-compositor
+              :filter-return #'hammerspoon-emacs-everywhere-compositor)
+  (setq emacs-everywhere--system-configured nil)
+  ;; Hammerspoon already places the selection on the clipboard before invoking
+  ;; emacsclient, so insert via yank rather than emacs-everywhere's default
+  ;; osascript-based selection grab.
+  (setq emacs-everywhere-init-hooks
+        (mapcar (lambda (fn)
+                  (if (eq fn 'emacs-everywhere-insert-selection) 'yank fn))
+                emacs-everywhere-init-hooks))
+  (define-key emacs-everywhere-mode-map (kbd "C-c C-c")
+              #'hammerspoon-emacs-everywhere-finish))
 #+end_src
 
 * Testing installation
 
-To test if you Hammerspoon works from Emacs, call =hammerspoon-test= (e.g., =M-x hammerspoon-test=).
+To test that Emacs can reach Hammerspoon, call =hammerspoon-test= (e.g., =M-x hammerspoon-test=). A Hammerspoon alert appears on success.
+
+To test that Hammerspoon can reach Emacs, run from the Hammerspoon console:
+
+#+begin_src lua
+spoon.editWithEmacs:test()
+#+end_src
+
+A line like =editWithEmacs test HH:MM:SS= appears in Emacs's =*Messages*= buffer on success. On failure (Emacs not running, server stopped, etc.), Hammerspoon shows an alert with the error.
 
 * How to use
 
@@ -64,12 +113,33 @@ With the above keybindings, when you press =Cmd= + =Alt= + =Ctrl= + =e=, Hammers
 
 If you press =Shift= + =Cmd= + =Alt= + =Ctrl= + =e=, Hammerspoon cuts the current selected text, and pastes that into the buffer.  When you finish editing, Hammerspoon will paste the content of the buffer; which will replace the selected text.
 
+* Public API
+
+In addition to the hotkey-driven editing flow, the spoon provides a function
+for running arbitrary Emacs Lisp from Hammerspoon:
+
+#+begin_src lua
+-- No callback; failures alert the user.
+spoon.editWithEmacs:emacsExecute('(message "hello from hammerspoon")')
+
+-- With a callback. Receives (rc, stdOut, stdErr) once the call resolves
+-- (after any auto-retry). When a callback is supplied, default failure
+-- alerts are suppressed so the caller can handle errors.
+spoon.editWithEmacs:emacsExecute('(+ 2 3)', function(rc, stdOut, stdErr)
+   if rc == 0 then
+      print("result:", stdOut)
+   else
+      print("failed:", stdErr)
+   end
+end)
+#+end_src
+
 * Limitations
 
 - This method is non-reentrant. This means you can only edit one field at a time. You do not need to send the text back to the text-field.
   You can use edit-with-emacs again without any undesirable effect.
 - It is currently sending commands directly to emacs via the keyboard. Thus, emacs should be ready to accept commands
-- If something goes wrong and the text does not appear, you can retrieve it from emacs. Switch to the _hs_edit buffer and you will see the text you were editing.
+- If the paste fails and the text does not appear in the originating window, you can retrieve it from Emacs. Switch to the _hs_edit buffer to recover the text you were editing.
   This buffer will be reused
 
 * Bugs/fixes?
