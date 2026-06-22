@@ -138,7 +138,16 @@ end)
 
 - This method is non-reentrant. This means you can only edit one field at a time. You do not need to send the text back to the text-field.
   You can use edit-with-emacs again without any undesirable effect.
-- It is currently sending commands directly to emacs via the keyboard. Thus, emacs should be ready to accept commands
+- It is currently sending commands directly to emacs via the keyboard. Thus, emacs should be ready to accept commands.
+- Text capture relies on macOS Accessibility (=AXValue= / =AXSelectedText=)
+  and falls back to keystrokes (=Cmd+A,Cmd+C= or =Cmd+X=) when an element does
+  not expose its text. Some applications (kitty, iTerm2, Electron apps such as
+  Claude Code) expose an =AXTextArea= whose value is always empty *and* either
+  ignore or rebind =Cmd+A=. In that case the spoon plants the sentinel string
+  =(application did not allow clipboard extraction)= on the pasteboard, alerts
+  the user, and opens Emacs with the sentinel as the buffer content. You can
+  still edit and send text back to such an application, but the original
+  content cannot be retrieved automatically.
 - If the paste fails and the text does not appear in the originating window, you can retrieve it from Emacs. Switch to the _hs_edit buffer to recover the text you were editing.
   This buffer will be reused
 

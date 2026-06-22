@@ -169,9 +169,70 @@ function obj:openEditor()
    self.currentEmacs:activate()
 end
 
+-- Read the focused element's text via macOS accessibility. Returns the text or
+-- nil when the focused element does not expose it (Electron, terminals, custom
+-- canvas widgets). For everything=true returns AXValue (full content); for
+-- everything=false returns AXSelectedText (current selection).
+function obj:readFocusedText(everything)
+   local ok, focused = pcall(function()
+      return hs.axuielement.systemWideElement().AXFocusedUIElement
+   end)
+   if not ok or not focused then return nil end
+   local val = everything and focused.AXValue or focused.AXSelectedText
+   -- Treat empty string as a miss. Some apps (kitty, iTerm2) expose
+   -- AXTextArea with an always-empty AXValue because their content lives in
+   -- a GPU-rendered surface, not in an NSText element. Falling through to
+   -- the keystroke fallback gives a correct "could not capture" alert when
+   -- the app also overrides Cmd+A; the cost is that editing a genuinely
+   -- empty native field also takes the slow path.
+   if type(val) ~= "string" or val == "" then return nil end
+   return val
+end
+
+-- Sentinel placed on the pasteboard before the keystroke fallback. If the app
+-- respects Cmd+A,Cmd+C (or Cmd+X) the sentinel gets overwritten; if it ignores
+-- them, the sentinel stays and surfaces in the Emacs buffer so the user is
+-- warned instead of silently editing stale clipboard content.
+obj.captureFailureSentinel = "(application did not allow clipboard extraction)"
+
+-- Populate the system pasteboard with the text to edit. Tries accessibility
+-- first; on miss, plants the sentinel and runs the keystroke fallback
+-- (Cmd+A,Cmd+C for everything or Cmd+X for selection). After a short delay
+-- checks pasteboard changeCount: if the app did not update the clipboard, the
+-- sentinel remains and the user is alerted. Either way onDone() is invoked so
+-- editing proceeds.
+function obj:prepareClipboard(everything, onDone)
+   local text = self:readFocusedText(everything)
+   if text then
+      hs.pasteboard.setContents(text)
+      onDone()
+      return
+   end
+
+   hs.pasteboard.setContents(self.captureFailureSentinel)
+   local before = hs.pasteboard.changeCount()
+   if everything then
+      hs.eventtap.keyStroke({"cmd"}, "a")
+      hs.eventtap.keyStroke({"cmd"}, "c")
+   else
+      hs.eventtap.keyStroke({"cmd"}, "x")
+   end
+
+   hs.timer.doAfter(0.2, function()
+      if hs.pasteboard.changeCount() == before then
+         local key = everything and "Cmd+A" or "Cmd+X"
+         local msg = "Could not capture text: the app appears to override " .. key
+                  .. ". Editing the sentinel string instead."
+         self.logger.e(msg)
+         hs.alert(msg)
+      end
+      onDone()
+   end)
+end
+
 -- Begin the edit with Emacs experience
 function obj:beginEditing(everything)
-   -- everything: if true, do the equivalent of Ctrl-A select everything
+   -- everything: if true, edit the full content of the focused field
    local w = hs.window.focusedWindow()
    if not w then
       hs.alert("No focused window found. Ignoring request")
@@ -201,15 +262,10 @@ function obj:beginEditing(everything)
    local f = io.open("/tmp/emacs-everywhere.txt", "w")
    if f then f:write(info) ; f:close() end
 
-   if everything then
-      hs.eventtap.keyStroke({"cmd"}, "a")
-      hs.eventtap.keyStroke({"cmd"}, "c")
-   else
-      hs.eventtap.keyStroke({"cmd"}, "x")
-   end
-
-   hs.notify.new({title=appName, informativeText="«" .. winTitle .. "»", subTitle="Editing in " .. self.emacsAppName}):send()
-   self:openEditor()
+   self:prepareClipboard(everything, function()
+      hs.notify.new({title=appName, informativeText="«" .. winTitle .. "»", subTitle="Editing in " .. self.emacsAppName}):send()
+      self:openEditor()
+   end)
 end
 
 function obj:bindHotkeys(mapping)
