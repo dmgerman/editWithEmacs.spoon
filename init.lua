@@ -274,8 +274,8 @@ function obj:bindHotkeys(mapping)
       edit_all       = function() self:beginEditing(true) end
    }
    local descriptions = {
-      edit_selection = "Edit selection with Emacs [Emacs]",
-      edit_all       = "Edit all text with Emacs [Emacs]"
+      edit_selection = "edit_selection - Edit selection with Emacs [Emacs]",
+      edit_all       = "edit_text - edit all text with Emacs [Emacs]"
    }
 
    for name, spec in pairs(mapping) do
